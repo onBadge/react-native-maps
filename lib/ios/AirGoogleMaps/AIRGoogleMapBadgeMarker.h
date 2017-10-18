@@ -11,9 +11,11 @@
 @property (nonatomic, assign) CLLocationCoordinate2D coordinate;
 @property (nonatomic, strong) UIColor* pinColor;
 @property (nonatomic, assign) NSInteger zIndex;
+@property (nonatomic, copy) RCTBubblingEventBlock onPress;
 
 @property (nonatomic, copy) NSString* badgeImage;
 @property (nonatomic, copy) NSString* badgeMask;
+@property (nonatomic, copy) NSString* badgeOverlay;
 @property (nonatomic, assign) CGSize size;
 
 
