@@ -7,6 +7,7 @@
 
 #import "AIRGoogleMap.h"
 #import "AIRGoogleMapMarker.h"
+#import "AIRGoogleMapBadgeMarker.h"
 #import "AIRGoogleMapPolygon.h"
 #import "AIRGoogleMapPolyline.h"
 #import "AIRGoogleMapCircle.h"
@@ -75,6 +76,11 @@ id regionAsJSON(MKCoordinateRegion region) {
     AIRGoogleMapMarker *marker = (AIRGoogleMapMarker*)subview;
     marker.realMarker.map = self;
     [self.markers addObject:marker];
+  }
+  else if ([subview isKindOfClass:[AIRGoogleMapBadgeMarker class]]) {
+      AIRGoogleMapBadgeMarker *marker = (AIRGoogleMapBadgeMarker*)subview;
+      marker.realMarker.map = self;
+      [self.markers addObject:marker];
   } else if ([subview isKindOfClass:[AIRGoogleMapPolygon class]]) {
     AIRGoogleMapPolygon *polygon = (AIRGoogleMapPolygon*)subview;
     polygon.polygon.map = self;
@@ -111,6 +117,11 @@ id regionAsJSON(MKCoordinateRegion region) {
     AIRGoogleMapMarker *marker = (AIRGoogleMapMarker*)subview;
     marker.realMarker.map = nil;
     [self.markers removeObject:marker];
+  }
+  else if ([subview isKindOfClass:[AIRGoogleMapBadgeMarker class]]) {
+      AIRGoogleMapBadgeMarker*marker = (AIRGoogleMapBadgeMarker*)subview;
+      marker.realMarker.map = nil;
+      [self.markers removeObject:marker];
   } else if ([subview isKindOfClass:[AIRGoogleMapPolygon class]]) {
     AIRGoogleMapPolygon *polygon = (AIRGoogleMapPolygon*)subview;
     polygon.polygon.map = nil;
