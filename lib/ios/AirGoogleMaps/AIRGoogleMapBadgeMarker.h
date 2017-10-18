@@ -16,6 +16,8 @@
 @property (nonatomic, copy) NSString* badgeImage;
 @property (nonatomic, copy) NSString* badgeMask;
 @property (nonatomic, copy) NSString* badgeOverlay;
+@property (nonatomic, assign) BOOL fadeBadgeImage;
+@property (nonatomic, assign) CGFloat badgeScale;
 @property (nonatomic, assign) CGSize size;
 
 
