@@ -11,9 +11,15 @@ CIContext* g_ciContext;
   UIImage* _image;
   UIImage* _mask;
   UIImage* _overlay;
-  UIImage* _currentIcon;
   CIImage* _ciOverlay;
-  BOOL _isValid;
+  
+  UIImage* _currentIcon;
+  UIImage* _currentImage;
+  UIImage* _currentMask;
+  UIImage* _currentOverlay;
+  UIColor* _currentPinColor;
+  CGFloat _currentBadgeScale;
+  BOOL _currentFadeBadgeImage;
 }
 
 + (CIContext*)ciContext {
@@ -28,7 +34,6 @@ CIContext* g_ciContext;
     _realMarker.opacity = 0;
     _size = CGSizeMake(64, 64);
     _badgeScale = 1.0f;
-    _isValid = YES;
   }
   return self;
 }
@@ -48,7 +53,7 @@ CIContext* g_ciContext;
   
   return [_bridge.imageLoader loadImageWithURLRequest:[RCTConvert NSURLRequest:source]
                                                  size:_size
-                                                scale:1
+                                                scale:RCTScreenScale()
                                               clipped:YES
                                            resizeMode:RCTResizeModeCenter
                                         progressBlock:nil
@@ -93,10 +98,8 @@ CIContext* g_ciContext;
   
   CIImage* final = finalFilter.outputImage;
   
-  _isValid = YES;
-  
   return [UIImage imageWithCGImage:[context createCGImage:final fromRect:final.extent]
-                             scale:RCTScreenScale()
+                             scale:source.scale
                        orientation:source.imageOrientation];
 }
 
@@ -106,7 +109,7 @@ CIContext* g_ciContext;
     return;
   }
   
-  CGRect overlayRect = CGRectMake(0, 0, _overlay.size.width, _overlay.size.height);
+  CGRect overlayRect = CGRectMake(0, 0, _overlay.size.width * _overlay.scale, _overlay.size.height * _overlay.scale);
   
   CIImage* ciBlank = [[CIImage imageWithColor:[CIColor clearColor]] imageByCroppingToRect:overlayRect];
   CIImage* ciColor = [[CIImage imageWithColor:[CIColor colorWithCGColor:_pinColor.CGColor]] imageByCroppingToRect:overlayRect];
@@ -123,27 +126,57 @@ CIContext* g_ciContext;
 
 - (void)assignIcon {
   dispatch_async(dispatch_get_main_queue(), ^{
-    if (_currentIcon) {
-      _realMarker.icon = [UIImage imageWithCGImage:_currentIcon.CGImage
-                                             scale:_currentIcon.scale / _badgeScale
-                                       orientation:_currentIcon.imageOrientation];
-      _realMarker.opacity = 1;
-      _realMarker.groundAnchor = CGPointMake(0.5f, 1.0f);
-    } else {
-      _realMarker.opacity = 0;
+    if ((_currentIcon != _realMarker.icon) || (_currentIcon && (_badgeScale != _currentBadgeScale))) {
+      if (_currentIcon) {
+        _realMarker.icon = [UIImage imageWithCGImage:_currentIcon.CGImage
+                                               scale:_currentIcon.scale / _badgeScale
+                                         orientation:_currentIcon.imageOrientation];
+        _realMarker.opacity = 1;
+        _realMarker.appearAnimation = kGMSMarkerAnimationPop;
+        _currentBadgeScale = _badgeScale;
+      } else {
+        if (_realMarker.icon)
+        _realMarker.icon = nil;
+        _realMarker.opacity = 0;
+        _realMarker.appearAnimation = kGMSMarkerAnimationNone;
+      }
     }
   });
 }
 
-- (void)makeIcon {
-  _currentIcon = nil;
-  
-  if (_image && _mask && _overlay)
-    _currentIcon = [self maskImage:_image mask:_mask];
-  
-  [self assignIcon];
+- (BOOL)isValid {
+  return(
+         (_currentImage == _image) &&
+         (_currentMask == _mask) &&
+         (_currentOverlay == _overlay) &&
+         (_currentPinColor == _pinColor) &&
+         (_currentFadeBadgeImage == _fadeBadgeImage)
+         );
 }
 
+- (void)nowValid {
+  _currentImage = _image;
+  _currentMask = _mask;
+  _currentOverlay = _overlay;
+  _currentPinColor = _pinColor;
+  _currentFadeBadgeImage = _fadeBadgeImage;
+}
+
+- (void)makeIcon {
+  @synchronized(_realMarker) {
+    if (![self isValid]) {
+      if (_image && _mask && _overlay) {
+        [self updateOverlay];
+        _currentIcon = [self maskImage:_image mask:_mask];
+        [self assignIcon];
+        [self nowValid];
+      } else {
+        _currentIcon = nil;
+        [self assignIcon];
+      }
+    }
+  }
+}
 
 - (void)updateIcon {
   if (!_image) {
@@ -168,19 +201,15 @@ CIContext* g_ciContext;
     [self loadImage:_badgeOverlay cancel:_maskCancellationBlock complete:^(NSError *error, UIImage *image) {
       if (!error) {
         _overlay = image;
-        [self updateOverlay];
         [self makeIcon];
       }
     }];
   }
-  
-  if (!_isValid)
-    [self makeIcon];
+  [self makeIcon];
 }
 
 - (void)setPinColor:(UIColor*)pinColor {
   _pinColor = pinColor;
-  [self updateOverlay];
   [self updateIcon];
 }
 
@@ -210,6 +239,15 @@ CIContext* g_ciContext;
   [self updateIcon];
 }
 
+- (void)setBadgeScale:(CGFloat)badgeScale {
+  _badgeScale = badgeScale;
+  [self assignIcon];
+}
+
+- (void)setFadeBadgeImage:(BOOL)fadeBadgeImage {
+  _fadeBadgeImage = fadeBadgeImage;
+  [self updateIcon];
+}
 
 - (void)setCoordinate:(CLLocationCoordinate2D)coordinate {
   _realMarker.position = coordinate;
@@ -235,15 +273,12 @@ CIContext* g_ciContext;
   return _realMarker.onPress;
 }
 
-- (void)setBadgeScale:(CGFloat)badgeScale {
-  _badgeScale = badgeScale;
-  [self assignIcon];
+- (void)setAnchor:(CGPoint)anchor {
+  _realMarker.groundAnchor = anchor;
 }
 
-- (void)setFadeBadgeImage:(BOOL)fadeBadgeImage {
-  _fadeBadgeImage = fadeBadgeImage;
-  _isValid = NO;
-  [self updateIcon];
+- (CGPoint)anchor {
+  return _realMarker.groundAnchor;
 }
 
 @end

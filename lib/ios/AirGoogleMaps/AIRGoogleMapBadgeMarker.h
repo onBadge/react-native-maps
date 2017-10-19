@@ -12,6 +12,7 @@
 @property (nonatomic, strong) UIColor* pinColor;
 @property (nonatomic, assign) NSInteger zIndex;
 @property (nonatomic, copy) RCTBubblingEventBlock onPress;
+@property (nonatomic, assign) CGPoint anchor;
 
 @property (nonatomic, copy) NSString* badgeImage;
 @property (nonatomic, copy) NSString* badgeMask;
