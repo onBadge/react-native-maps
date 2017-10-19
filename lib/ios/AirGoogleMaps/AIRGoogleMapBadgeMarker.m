@@ -18,6 +18,7 @@ CIContext* g_ciContext;
   UIImage* _currentMask;
   UIImage* _currentOverlay;
   UIColor* _currentPinColor;
+  CGSize _currentSize;
   CGFloat _currentBadgeScale;
   BOOL _currentFadeBadgeImage;
 }
@@ -68,7 +69,9 @@ CIContext* g_ciContext;
   
   CIImage* ciSource = [CIImage imageWithCGImage:source.CGImage];
   CIImage* ciMask = [CIImage imageWithCGImage:mask.CGImage];
-  CIImage* ciBackground = [[CIImage imageWithColor:[CIColor clearColor]] imageByCroppingToRect:CGRectMake(0, 0, source.size.width, source.size.height)];
+  CIImage* ciBackground = [[CIImage imageWithColor:[CIColor clearColor]]
+                           imageByCroppingToRect:CGRectMake(0, 0, source.size.width * source.scale, source.size.height * source.scale)
+                           ];
   
   CIContext* context = [AIRGoogleMapBadgeMarker ciContext];
   
@@ -126,17 +129,17 @@ CIContext* g_ciContext;
 
 - (void)assignIcon {
   dispatch_async(dispatch_get_main_queue(), ^{
-    if ((_currentIcon != _realMarker.icon) || (_currentIcon && (_badgeScale != _currentBadgeScale))) {
+    if (_currentIcon && (_badgeScale != _currentBadgeScale)) {
       if (_currentIcon) {
         _realMarker.icon = [UIImage imageWithCGImage:_currentIcon.CGImage
                                                scale:_currentIcon.scale / _badgeScale
                                          orientation:_currentIcon.imageOrientation];
         _realMarker.opacity = 1;
-        _realMarker.appearAnimation = kGMSMarkerAnimationPop;
+        _realMarker.appearAnimation = kGMSMarkerAnimationNone;
         _currentBadgeScale = _badgeScale;
       } else {
         if (_realMarker.icon)
-        _realMarker.icon = nil;
+          _realMarker.icon = nil;
         _realMarker.opacity = 0;
         _realMarker.appearAnimation = kGMSMarkerAnimationNone;
       }
@@ -150,7 +153,8 @@ CIContext* g_ciContext;
          (_currentMask == _mask) &&
          (_currentOverlay == _overlay) &&
          (_currentPinColor == _pinColor) &&
-         (_currentFadeBadgeImage == _fadeBadgeImage)
+         (_currentFadeBadgeImage == _fadeBadgeImage) &&
+         CGSizeEqualToSize(_currentSize, _size)
          );
 }
 
@@ -160,6 +164,7 @@ CIContext* g_ciContext;
   _currentOverlay = _overlay;
   _currentPinColor = _pinColor;
   _currentFadeBadgeImage = _fadeBadgeImage;
+  _currentSize = _size;
 }
 
 - (void)makeIcon {
@@ -180,30 +185,39 @@ CIContext* g_ciContext;
 
 - (void)updateIcon {
   if (!_image) {
-    [self loadImage:_badgeImage cancel:_imageCancellationBlock complete:^(NSError *error, UIImage *image) {
-      if (!error) {
-        _image = image;
-        [self makeIcon];
-      }
-    }];
+    _imageCancellationBlock = [self loadImage:_badgeImage
+                                       cancel:_imageCancellationBlock
+                                     complete:^(NSError *error, UIImage *image) {
+                                       _imageCancellationBlock = nil;
+                                       if (!error) {
+                                         _image = image;
+                                         [self makeIcon];
+                                       }
+                                     }];
   }
   
   if (!_mask) {
-    [self loadImage:_badgeMask cancel:_maskCancellationBlock complete:^(NSError *error, UIImage *image) {
-      if (!error) {
-        _mask = image;
-        [self makeIcon];
-      }
-    }];
+    _maskCancellationBlock = [self loadImage:_badgeMask
+                                      cancel:_maskCancellationBlock
+                                    complete:^(NSError *error, UIImage *image) {
+                                      _maskCancellationBlock = nil;
+                                      if (!error) {
+                                        _mask = image;
+                                        [self makeIcon];
+                                      }
+                                    }];
   }
   
   if (!_overlay) {
-    [self loadImage:_badgeOverlay cancel:_maskCancellationBlock complete:^(NSError *error, UIImage *image) {
-      if (!error) {
-        _overlay = image;
-        [self makeIcon];
-      }
-    }];
+    _overlayCancellationBlock = [self loadImage:_badgeOverlay
+                                         cancel:_overlayCancellationBlock
+                                       complete:^(NSError *error, UIImage *image) {
+                                         _overlayCancellationBlock = nil;
+                                         if (!error) {
+                                           _overlay = image;
+                                           [self makeIcon];
+                                         }
+                                       }];
   }
   [self makeIcon];
 }
@@ -274,7 +288,7 @@ CIContext* g_ciContext;
 }
 
 - (void)setAnchor:(CGPoint)anchor {
-  _realMarker.groundAnchor = anchor;
+  _realMarker.groundAnchor = CGPointMake(0.5f, 0.5f);
 }
 
 - (CGPoint)anchor {
