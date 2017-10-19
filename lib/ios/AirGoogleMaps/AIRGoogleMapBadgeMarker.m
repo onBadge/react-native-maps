@@ -288,7 +288,7 @@ CIContext* g_ciContext;
 }
 
 - (void)setAnchor:(CGPoint)anchor {
-  _realMarker.groundAnchor = CGPointMake(0.5f, 0.5f);
+  _realMarker.groundAnchor = anchor;
 }
 
 - (CGPoint)anchor {
