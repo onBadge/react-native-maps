@@ -3,11 +3,16 @@ package com.airbnb.android.react.maps;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LightingColorFilter;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
+import android.icu.text.Normalizer2;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.util.DisplayMetrics;
@@ -162,6 +167,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
     @Override
     public void addToMap(GoogleMap map) {
         marker = map.addMarker(getMarkerOptions());
+
     }
 
     @Override
@@ -235,6 +241,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
 
     public void setFadeBadgeImage(boolean fadeBadgeImage) {
         this.fadeBadgeImage = fadeBadgeImage;
+        this.imageLoaded();
     }
 
     public void setScale(float scale) {
@@ -260,7 +267,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
         return options;
     }
 
-    public void imageLoaded() {
+    public synchronized void imageLoaded() {
         Bitmap image = null;
         Bitmap mask = null;
         Bitmap overlay = null;
@@ -281,19 +288,33 @@ public class AirMapBadgeMarker extends AirMapFeature {
             Bitmap result = Bitmap.createBitmap(dpToPx(this.width), dpToPx(this.height), Bitmap.Config.ARGB_8888);
             Canvas tempCanvas = new Canvas(result);
 
-            Rect dst = new Rect(0,0,result.getWidth()-1, result.getHeight()-1);
+            Bitmap overlayBitmap = Bitmap.createBitmap(dpToPx(this.width), dpToPx(this.height), Bitmap.Config.ARGB_8888);
+            Canvas overlayCanvas = new Canvas(overlayBitmap);
 
+            Rect dst = new Rect(0,0,result.getWidth()-1, result.getHeight()-1);
             Rect src = new Rect(0,0,image.getWidth()-1, image.getHeight()-1);
-            tempCanvas.drawBitmap(image, src, dst, null);
 
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            if (this.fadeBadgeImage)
+                paint.setColorFilter(ColorFilterGenerator.adjustColor(120, 40, 0, 0));
+            else
+                paint.setColorFilter(null);
+            tempCanvas.drawBitmap(image, src, dst, paint);
+
             paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            paint.setColorFilter(null);
             src = new Rect(0,0,mask.getWidth()-1, mask.getHeight()-1);
             tempCanvas.drawBitmap(mask, src, dst, paint);
 
             paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
+            paint.setColorFilter(new PorterDuffColorFilter(this.pinColor, PorterDuff.Mode.MULTIPLY));
             src = new Rect(0,0,overlay.getWidth()-1, overlay.getHeight()-1);
-            tempCanvas.drawBitmap(overlay, src, dst, paint);
+            overlayCanvas.drawBitmap(overlay, src, dst, paint);
+
+            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
+            paint.setColorFilter(null);
+            tempCanvas.drawBitmap(overlayBitmap, src, dst, paint);
 
             iconBitmapDescriptor = BitmapDescriptorFactory.fromBitmap(result);
         } else {

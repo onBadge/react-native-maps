@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.support.v4.view.GestureDetectorCompat;
 import android.support.v4.view.MotionEventCompat;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -226,6 +227,9 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
         if (view.moveOnMarkerPress) {
           return false;
         } else {
+          if (badgeMarker != null)
+            return true;
+
           marker.showInfoWindow();
           return true;
         }
