@@ -77,6 +77,7 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
 
   private final List<AirMapFeature> features = new ArrayList<>();
   private final Map<Marker, AirMapMarker> markerMap = new HashMap<>();
+  private final Map<Marker, AirMapBadgeMarker> badgeMarkerMap = new HashMap<>();
   private final Map<Polyline, AirMapPolyline> polylineMap = new HashMap<>();
   private final Map<Polygon, AirMapPolygon> polygonMap = new HashMap<>();
   private final ScaleGestureDetector scaleDetector;
@@ -193,15 +194,31 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
         WritableMap event;
         AirMapMarker airMapMarker = markerMap.get(marker);
 
-        event = makeClickEventData(marker.getPosition());
-        event.putString("action", "marker-press");
-        event.putString("id", airMapMarker.getIdentifier());
-        manager.pushEvent(context, view, "onMarkerPress", event);
+        if (airMapMarker != null) {
+          event = makeClickEventData(marker.getPosition());
+          event.putString("action", "marker-press");
+          event.putString("id", airMapMarker.getIdentifier());
+          manager.pushEvent(context, view, "onMarkerPress", event);
 
-        event = makeClickEventData(marker.getPosition());
-        event.putString("action", "marker-press");
-        event.putString("id", airMapMarker.getIdentifier());
-        manager.pushEvent(context, markerMap.get(marker), "onPress", event);
+          event = makeClickEventData(marker.getPosition());
+          event.putString("action", "marker-press");
+          event.putString("id", airMapMarker.getIdentifier());
+          manager.pushEvent(context, markerMap.get(marker), "onPress", event);
+        }
+
+        AirMapBadgeMarker badgeMarker = badgeMarkerMap.get(marker);
+
+        if (badgeMarker != null) {
+          event = makeClickEventData(marker.getPosition());
+          event.putString("action", "marker-press");
+          event.putString("id", "badge-marker");
+          manager.pushEvent(context, view, "onMarkerPress", event);
+
+          event = makeClickEventData(marker.getPosition());
+          event.putString("action", "marker-press");
+          event.putString("id", "badge-marker");
+          manager.pushEvent(context, badgeMarker, "onPress", event);
+        }
 
         // Return false to open the callout info window and center on the marker
         // https://developers.google.com/android/reference/com/google/android/gms/maps/GoogleMap
@@ -481,6 +498,12 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
       features.add(index, annotation);
       Marker marker = (Marker) annotation.getFeature();
       markerMap.put(marker, annotation);
+    } else if (child instanceof AirMapBadgeMarker) {
+      AirMapBadgeMarker annotation = (AirMapBadgeMarker) child;
+      annotation.addToMap(map);
+      features.add(index, annotation);
+      Marker marker = (Marker) annotation.getFeature();
+      badgeMarkerMap.put(marker, annotation);
     } else if (child instanceof AirMapPolyline) {
       AirMapPolyline polylineView = (AirMapPolyline) child;
       polylineView.addToMap(map);
@@ -521,7 +544,10 @@ public class AirMapView extends MapView implements GoogleMap.InfoWindowAdapter,
     AirMapFeature feature = features.remove(index);
     if (feature instanceof AirMapMarker) {
       markerMap.remove(feature.getFeature());
+    } else if (feature instanceof AirMapBadgeMarker) {
+      badgeMarkerMap.remove(feature.getFeature());
     }
+
     feature.removeFromMap(map);
   }
 
