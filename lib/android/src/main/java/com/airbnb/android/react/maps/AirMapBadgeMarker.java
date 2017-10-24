@@ -6,9 +6,11 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.net.Uri;
 import android.support.annotation.NonNull;
+import android.util.DisplayMetrics;
 
 import com.facebook.common.references.CloseableReference;
 import com.facebook.datasource.DataSource;
@@ -147,6 +149,11 @@ public class AirMapBadgeMarker extends AirMapFeature {
         return markerOptions;
     }
 
+    public int dpToPx(int dp) {
+        DisplayMetrics displayMetrics = getContext().getResources().getDisplayMetrics();
+        return Math.round(dp * (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT));
+    }
+
     @Override
     public Object getFeature() {
         return marker;
@@ -226,7 +233,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
         this.loadBitmap(badgeOverlay, badgeOverlayHolder);
     }
 
-    public void setFadgeBadgeImage(boolean fadeBadgeImage) {
+    public void setFadeBadgeImage(boolean fadeBadgeImage) {
         this.fadeBadgeImage = fadeBadgeImage;
     }
 
@@ -271,14 +278,22 @@ public class AirMapBadgeMarker extends AirMapFeature {
             overlay = controllerListener.getBitmap();
 
         if ((image != null) && (mask != null) && (overlay != null)) {
-            Bitmap result = Bitmap.createBitmap(mask.getWidth(), mask.getHeight(), Bitmap.Config.ARGB_8888);
+            Bitmap result = Bitmap.createBitmap(dpToPx(this.width), dpToPx(this.height), Bitmap.Config.ARGB_8888);
             Canvas tempCanvas = new Canvas(result);
+
+            Rect dst = new Rect(0,0,result.getWidth()-1, result.getHeight()-1);
+
+            Rect src = new Rect(0,0,image.getWidth()-1, image.getHeight()-1);
+            tempCanvas.drawBitmap(image, src, dst, null);
+
             Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
             paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
-            tempCanvas.drawBitmap(image, 0, 0, null);
-            tempCanvas.drawBitmap(mask, 0, 0, paint);
+            src = new Rect(0,0,mask.getWidth()-1, mask.getHeight()-1);
+            tempCanvas.drawBitmap(mask, src, dst, paint);
+
             paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
-            tempCanvas.drawBitmap(overlay, 0, 0, paint);
+            src = new Rect(0,0,overlay.getWidth()-1, overlay.getHeight()-1);
+            tempCanvas.drawBitmap(overlay, src, dst, paint);
 
             iconBitmapDescriptor = BitmapDescriptorFactory.fromBitmap(result);
         } else {

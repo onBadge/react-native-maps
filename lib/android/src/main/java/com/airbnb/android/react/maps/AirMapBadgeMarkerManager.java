@@ -1,18 +1,13 @@
 package com.airbnb.android.react.maps;
 
 import android.graphics.Color;
-import android.view.View;
 
-import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.common.MapBuilder;
-import com.facebook.react.uimanager.LayoutShadowNode;
 import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.ViewGroupManager;
 import com.facebook.react.uimanager.annotations.ReactProp;
-import com.google.android.gms.maps.model.Marker;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -73,7 +68,7 @@ public class AirMapBadgeMarkerManager extends ViewGroupManager<AirMapBadgeMarker
 
     @ReactProp(name = "scale", defaultFloat = 1.0f)
     public void setScale(AirMapBadgeMarker view, float scale) {
-
+        view.setScale(scale);
     }
 
     @ReactProp(name = "size")
@@ -85,7 +80,7 @@ public class AirMapBadgeMarkerManager extends ViewGroupManager<AirMapBadgeMarker
 
     @ReactProp(name = "fadeBadgeImage", defaultBoolean = true)
     public void setFadeBadgeImage(AirMapBadgeMarker view, boolean fadeBadgeImage) {
-
+        view.setFadeBadgeImage(fadeBadgeImage);
     }
 
 
