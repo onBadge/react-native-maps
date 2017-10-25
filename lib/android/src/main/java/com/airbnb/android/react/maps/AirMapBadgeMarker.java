@@ -3,26 +3,19 @@ package com.airbnb.android.react.maps;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.ColorMatrix;
-import android.graphics.ColorMatrixColorFilter;
-import android.graphics.LightingColorFilter;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
-import android.icu.text.Normalizer2;
 import android.net.Uri;
-import android.support.annotation.NonNull;
 import android.util.DisplayMetrics;
 
 import com.facebook.common.references.CloseableReference;
 import com.facebook.datasource.DataSource;
 import com.facebook.drawee.backends.pipeline.Fresco;
-import com.facebook.drawee.backends.pipeline.PipelineDraweeController;
 import com.facebook.drawee.controller.BaseControllerListener;
-import com.facebook.drawee.controller.ControllerListener;
 import com.facebook.drawee.drawable.ScalingUtils;
 import com.facebook.drawee.generic.GenericDraweeHierarchy;
 import com.facebook.drawee.generic.GenericDraweeHierarchyBuilder;
@@ -42,10 +35,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.Nullable;
 
@@ -95,7 +86,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
                     CloseableReference.closeSafely(imageReference);
                 }
             }
-            this.marker.imageLoaded();
+            this.marker.composeIcon();
         }
     }
 
@@ -117,9 +108,6 @@ public class AirMapBadgeMarker extends AirMapFeature {
     private int zIndex = 0;
     private int width = 64;
     private int height = 64;
-    private String badgeImage;
-    private String badgeMask;
-    private String badgeOverlay;
     private boolean fadeBadgeImage;
     private float scale = 1.0f;
 
@@ -190,7 +178,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
 
     public void setPinColor(int pinColor) {
         this.pinColor = pinColor;
-        update();
+        this.composeIcon();
     }
 
     public void setAnchor(double x, double y) {
@@ -204,7 +192,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
     public void setSize(double width, double height) {
         this.width = (int)width;
         this.height = (int)height;
-        update();
+        this.composeIcon();
     }
 
     private void loadBitmap(String uri, DraweeHolder<?> holder) {
@@ -225,27 +213,25 @@ public class AirMapBadgeMarker extends AirMapFeature {
     }
 
     public void setBadgeImage(String badgeImage) {
-        this.badgeImage = badgeImage;
         this.loadBitmap(badgeImage, badgeImageHolder);
     }
 
     public void setBadgeMask(String badgeMask) {
-        this.badgeMask = badgeMask;
         this.loadBitmap(badgeMask, badgeMaskHolder);
     }
 
     public void setBadgeOverlay(String badgeOverlay) {
-        this.badgeOverlay = badgeOverlay;
         this.loadBitmap(badgeOverlay, badgeOverlayHolder);
     }
 
     public void setFadeBadgeImage(boolean fadeBadgeImage) {
         this.fadeBadgeImage = fadeBadgeImage;
-        this.imageLoaded();
+        this.composeIcon();
     }
 
     public void setScale(float scale) {
         this.scale = scale;
+        this.composeIcon();
     }
 
     private BitmapDescriptor getIcon() {
@@ -267,7 +253,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
         return options;
     }
 
-    public synchronized void imageLoaded() {
+    public synchronized void composeIcon() {
         Bitmap image = null;
         Bitmap mask = null;
         Bitmap overlay = null;
@@ -285,11 +271,12 @@ public class AirMapBadgeMarker extends AirMapFeature {
             overlay = controllerListener.getBitmap();
 
         if ((image != null) && (mask != null) && (overlay != null)) {
-            Bitmap result = Bitmap.createBitmap(dpToPx(this.width), dpToPx(this.height), Bitmap.Config.ARGB_8888);
+            Bitmap result = Bitmap.createBitmap(
+                    (int)(dpToPx(this.width) * this.scale),
+                    (int)(dpToPx(this.height) * this.scale),
+                    Bitmap.Config.ARGB_8888
+            );
             Canvas tempCanvas = new Canvas(result);
-
-            Bitmap overlayBitmap = Bitmap.createBitmap(dpToPx(this.width), dpToPx(this.height), Bitmap.Config.ARGB_8888);
-            Canvas overlayCanvas = new Canvas(overlayBitmap);
 
             Rect dst = new Rect(0,0,result.getWidth()-1, result.getHeight()-1);
             Rect src = new Rect(0,0,image.getWidth()-1, image.getHeight()-1);
@@ -310,11 +297,7 @@ public class AirMapBadgeMarker extends AirMapFeature {
             paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
             paint.setColorFilter(new PorterDuffColorFilter(this.pinColor, PorterDuff.Mode.MULTIPLY));
             src = new Rect(0,0,overlay.getWidth()-1, overlay.getHeight()-1);
-            overlayCanvas.drawBitmap(overlay, src, dst, paint);
-
-            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_OVER));
-            paint.setColorFilter(null);
-            tempCanvas.drawBitmap(overlayBitmap, src, dst, paint);
+            tempCanvas.drawBitmap(overlay, src, dst, paint);
 
             iconBitmapDescriptor = BitmapDescriptorFactory.fromBitmap(result);
         } else {
