@@ -129,7 +129,7 @@ CIContext* g_ciContext;
 
 - (void)assignIcon {
   dispatch_async(dispatch_get_main_queue(), ^{
-    if (_currentIcon && (_badgeScale != _currentBadgeScale)) {
+    if (_currentIcon || (_badgeScale != _currentBadgeScale)) {
       if (_currentIcon) {
         _realMarker.icon = [UIImage imageWithCGImage:_currentIcon.CGImage
                                                scale:_currentIcon.scale / _badgeScale
