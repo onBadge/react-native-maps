@@ -155,7 +155,6 @@ public class AirMapBadgeMarker extends AirMapFeature {
     @Override
     public void addToMap(GoogleMap map) {
         marker = map.addMarker(getMarkerOptions());
-
     }
 
     @Override
@@ -234,22 +233,13 @@ public class AirMapBadgeMarker extends AirMapFeature {
         this.composeIcon();
     }
 
-    private BitmapDescriptor getIcon() {
-        if (iconBitmapDescriptor != null) {
-            // use local image as a marker
-            return iconBitmapDescriptor;
-        } else {
-            // render the default marker pin
-            return BitmapDescriptorFactory.defaultMarker(10);
-        }
-    }
-
     private MarkerOptions createMarkerOptions() {
         MarkerOptions options = new MarkerOptions().position(position);
         if (anchorIsSet)
             options.anchor(anchorX, anchorY);
         options.zIndex(zIndex);
-        options.icon(getIcon());
+        options.icon(iconBitmapDescriptor);
+        options.alpha(iconBitmapDescriptor == null ? 0.0f : 1.0f);
         return options;
     }
 
@@ -310,6 +300,11 @@ public class AirMapBadgeMarker extends AirMapFeature {
         if (marker == null)
             return;
 
-        marker.setIcon(getIcon());
+        if (iconBitmapDescriptor != null) {
+            marker.setIcon(iconBitmapDescriptor);
+            marker.setAlpha(1.0f);
+        } else {
+            marker.setAlpha(0.0f);
+        }
     }
 }
