@@ -156,9 +156,16 @@ id regionAsJSON(MKCoordinateRegion region) {
 #pragma clang diagnostic pop
 
 - (void)setInitialRegion:(MKCoordinateRegion)initialRegion {
-  if (_initialRegionSet) return;
-  _initialRegionSet = true;
-  self.camera = [AIRGoogleMap makeGMSCameraPositionFromMap:self andMKCoordinateRegion:initialRegion];
+  if (!_initialRegionSet) {
+    // bugfix: empty region set on map re-render
+    if ((initialRegion.center.latitude < DBL_EPSILON) &&
+        (initialRegion.center.longitude < DBL_EPSILON) &&
+        (initialRegion.span.latitudeDelta < DBL_EPSILON) &&
+        (initialRegion.span.longitudeDelta < DBL_EPSILON))
+      return;
+    _initialRegionSet = true;
+    self.camera = [AIRGoogleMap makeGMSCameraPositionFromMap:self andMKCoordinateRegion:initialRegion];
+  }
 }
 
 - (void)setRegion:(MKCoordinateRegion)region {
