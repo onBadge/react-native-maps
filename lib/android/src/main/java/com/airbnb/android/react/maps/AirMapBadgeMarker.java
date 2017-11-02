@@ -2,6 +2,7 @@ package com.airbnb.android.react.maps;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
@@ -45,20 +46,20 @@ public class AirMapBadgeMarker extends AirMapFeature {
         private AirMapBadgeMarker marker;
         private DataSource<CloseableReference<CloseableImage>> dataSource;
         private Bitmap bitmap;
-        private BitmapDescriptor bitmapDescriptor;
-
-        public BitmapDescriptor getBitmapDescriptor() {
-            return this.bitmapDescriptor;
-        }
 
         public Bitmap getBitmap() {
             return this.bitmap;
         }
 
-        public ImageControllerListener(AirMapBadgeMarker marker, DataSource<CloseableReference<CloseableImage>> dataSource) {
+        private ImageControllerListener(AirMapBadgeMarker marker, DataSource<CloseableReference<CloseableImage>> dataSource) {
             this.marker = marker;
             this.dataSource = dataSource;
-            this.bitmapDescriptor = null;
+        }
+
+        private ImageControllerListener(AirMapBadgeMarker marker, Bitmap bitmap) {
+            this.marker = marker;
+            this.bitmap = bitmap;
+            this.marker.composeIcon();
         }
 
         @Override
@@ -74,10 +75,8 @@ public class AirMapBadgeMarker extends AirMapFeature {
                     if (image != null && image instanceof CloseableStaticBitmap) {
                         CloseableStaticBitmap closeableStaticBitmap = (CloseableStaticBitmap) image;
                         Bitmap bitmap = closeableStaticBitmap.getUnderlyingBitmap();
-                        if (bitmap != null) {
+                        if (bitmap != null)
                             this.bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
-                            this.bitmapDescriptor = BitmapDescriptorFactory.fromBitmap(bitmap);
-                        }
                     }
                 }
             } finally {
@@ -194,21 +193,37 @@ public class AirMapBadgeMarker extends AirMapFeature {
         this.composeIcon();
     }
 
-    private void loadBitmap(String uri, DraweeHolder<?> holder) {
-        ImageRequest imageRequest = ImageRequestBuilder
-                .newBuilderWithSource(Uri.parse(uri))
-                .build();
+    private int getDrawableResourceByName(String name) {
+        return getResources().getIdentifier(
+                name,
+                "drawable",
+                getContext().getPackageName());
+    }
 
-        ImagePipeline imagePipeline = Fresco.getImagePipeline();
-        DataSource<CloseableReference<CloseableImage>> dataSource = imagePipeline.fetchDecodedImage(imageRequest, this);
-        ImageControllerListener controllerListener = new ImageControllerListener(this, dataSource);
-        DraweeController controller = Fresco.newDraweeControllerBuilder()
-                .setImageRequest(imageRequest)
-                .setControllerListener(controllerListener)
-                .setOldController(holder.getController())
-                .build();
-        holder.setController(controller);
-        this.controllerMap.put(holder, controllerListener);
+
+    private void loadBitmap(String uri, DraweeHolder<?> holder) {
+        if (uri == null) {
+            this.controllerMap.remove(holder);
+        } else if (uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("file://")) {
+            ImageRequest imageRequest = ImageRequestBuilder
+                    .newBuilderWithSource(Uri.parse(uri))
+                    .build();
+
+            ImagePipeline imagePipeline = Fresco.getImagePipeline();
+            DataSource<CloseableReference<CloseableImage>> dataSource = imagePipeline.fetchDecodedImage(imageRequest, this);
+
+            ImageControllerListener controllerListener = new ImageControllerListener(this, dataSource);
+            this.controllerMap.put(holder, controllerListener);
+
+            DraweeController controller = Fresco.newDraweeControllerBuilder()
+                    .setImageRequest(imageRequest)
+                    .setControllerListener(controllerListener)
+                    .setOldController(holder.getController())
+                    .build();
+            holder.setController(controller);
+        } else {
+            this.controllerMap.put(holder, new ImageControllerListener(this, BitmapFactory.decodeResource(getResources(), getDrawableResourceByName(uri))));
+        }
     }
 
     public void setBadgeImage(String badgeImage) {
